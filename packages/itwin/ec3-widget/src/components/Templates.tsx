@@ -14,21 +14,14 @@ import React from "react";
 import { useApiContext } from "./context/APIContext";
 import { ExportModal } from "./ExportModal";
 import { DeleteModal } from "./DeleteModal";
-
-/**
- * Template props
- * @beta
- */
-export interface TemplateProps {
-  onClickCreate?: () => void;
-  onClickTemplateTitle?: (template: Configuration) => void;
-}
+import { EC3Widget } from "../EC3Widget";
+import type { TemplateProps } from "./TemplateProps";
 
 /**
  * Templates component to display list of templates
  * @beta
  */
-export const Templates = ({ onClickCreate, onClickTemplateTitle }: TemplateProps) => {
+export const Templates = ({ onClickCreate, onClickTemplateTitle, onExportResult }: TemplateProps) => {
   const {
     config: { getAccessToken, iTwinId, getEC3AccessToken },
   } = useApiContext();
@@ -40,7 +33,6 @@ export const Templates = ({ onClickCreate, onClickTemplateTitle }: TemplateProps
   const configClient = useApiContext().ec3ConfigurationsClient;
   const [token, setToken] = useState<string>();
   const [modalIsOpen, openModal] = useState(false);
-
   const load = useCallback(async () => {
     setIsLoading(true);
     if (iTwinId) {
@@ -57,7 +49,7 @@ export const Templates = ({ onClickCreate, onClickTemplateTitle }: TemplateProps
       });
       setTemplates(configurations);
     } else {
-      toaster.negative("Invalid iTwinId");
+      toaster.negative("Invalid iTwinId.");
     }
 
     setIsLoading(false);
@@ -101,30 +93,35 @@ export const Templates = ({ onClickCreate, onClickTemplateTitle }: TemplateProps
   return (
     <>
       <div className="ec3w-templates-list-container">
-        <div className="ec3w-toolbar" data-testid="ec3-templates">
-          <div className="ec3w-toolbar-left">
-            <Button startIcon={<SvgAdd />} onClick={onClickCreate} styleType="high-visibility" title="New Template">
-              New
-            </Button>
-            <Button data-testid="ec3-export-button" styleType="default" onClick={onExport} disabled={!selectedTemplate}>
-              Export
-            </Button>
-          </div>
-          <div className="ec3w-search-bar-container">
-            <IconButton title="Refresh" onClick={refresh} disabled={isLoading} styleType="borderless">
-              <SvgRefresh />
-            </IconButton>
-            <div className="ec3w-search-button" data-testid="ec3-search-bar">
-              <SearchBar searchValue={searchValue} setSearchValue={setSearchValue} disabled={isLoading} />
-            </div>
-          </div>
-        </div>
         {isLoading ? (
           <LoadingOverlay />
         ) : templates.length === 0 ? (
-          <EmptyMessage message="No templates available" />
+          <>
+            <EmptyMessage message={EC3Widget.translate("noTemplateMsg")} />
+            <Button startIcon={<SvgAdd />} onClick={onClickCreate} styleType="high-visibility" title="Add New Template">
+              Add New Template
+            </Button>
+          </>
         ) : (
           <div className="ec3w-templates-list">
+            <div className="ec3w-toolbar" data-testid="ec3-templates">
+              <div className="ec3w-toolbar-left">
+                <Button startIcon={<SvgAdd />} onClick={onClickCreate} styleType="high-visibility" title="New Template">
+                  New
+                </Button>
+                <Button data-testid="ec3-export-button" styleType="default" onClick={onExport} disabled={!selectedTemplate}>
+                  Export
+                </Button>
+              </div>
+              <div className="ec3w-search-bar-container">
+                <IconButton title="Reload List" onClick={refresh} disabled={isLoading} styleType="borderless">
+                  <SvgRefresh />
+                </IconButton>
+                <div className="ec3w-search-button" data-testid="ec3-search-bar">
+                  <SearchBar searchValue={searchValue} setSearchValue={setSearchValue} disabled={isLoading} />
+                </div>
+              </div>
+            </div>
             {filteredTemplates.map((template) => (
               <HorizontalTile
                 key={template.id}
@@ -174,6 +171,7 @@ export const Templates = ({ onClickCreate, onClickTemplateTitle }: TemplateProps
         close={() => openModal(false)}
         templateId={selectedTemplate?.id}
         token={token}
+        onExportResult={onExportResult}
       />
 
       <DeleteModal

@@ -8,13 +8,17 @@
 
 import type { AccessToken } from '@itwin/core-bentley';
 import type { EC3ConfigurationLabel } from '@itwin/insights-client';
+import type { EC3JobStatus } from '@itwin/insights-client';
 import type { IEC3ConfigurationsClient } from '@itwin/insights-client';
 import type { IEC3JobsClient } from '@itwin/insights-client';
 import type { IOdataClient } from '@itwin/insights-client';
 import type { IReportsClient } from '@itwin/insights-client';
+import type { Localization } from '@itwin/core-common';
 import { default as React_2 } from 'react';
+import type { Report } from '@itwin/insights-client';
 import { StagePanelLocation } from '@itwin/appui-react';
 import { StagePanelSection } from '@itwin/appui-react';
+import type { TranslationOptions } from '@itwin/core-common';
 import type { UiItemsProvider } from '@itwin/appui-react';
 import type { Widget } from '@itwin/appui-react';
 
@@ -48,7 +52,7 @@ export interface EC3ConfigCommonProps {
 }
 
 // @beta
-export type EC3ConfigProps = EC3ConfigPropsWithRedirectUri | EC3ConfigPropsWithGetEC3AccessToken;
+export type EC3ConfigProps = EC3ConfigPropsWithRedirectUri | EC3ConfigPropsWithGetEC3AccessToken | EC3ConfigPropsWithDefaultReport | EC3ConfigPropsWithCallbacks;
 
 // @beta
 export type EC3ConfigPropsWithGetEC3AccessToken = EC3ConfigCommonProps & {
@@ -88,34 +92,43 @@ export interface EC3Token {
 }
 
 // @public
+export class EC3Widget {
+    static initialize(config?: EC3WidgetConfig): Promise<void>;
+    // (undocumented)
+    static localization: Localization;
+    static get localizationNamespace(): string;
+    static terminate(): void;
+    // (undocumented)
+    static translate(key: string, options?: TranslationOptions): string;
+}
+
+// @public
 export type GetAccessTokenFn = () => Promise<AccessToken>;
 
 // @beta
 export function handleEC3AuthCallback(ec3Config: EC3AuthCallbackConfigProps, source?: string): void;
 
 // @beta
-export const TemplateMenu: ({ template, onSaveSuccess, onClickCancel }: TemplateMenuProps) => JSX.Element;
+export const TemplateMenu: (props: TemplateMenuProps) => JSX.Element;
 
 // @beta
 export interface TemplateMenuProps {
     // (undocumented)
-    onClickCancel?: () => void;
+    onClickCancel: () => void;
     // (undocumented)
     onSaveSuccess: () => void;
     // (undocumented)
     template?: Configuration;
 }
 
-// @beta
-export interface TemplateProps {
-    // (undocumented)
+// @public
+export type TemplateProps = Omit<EC3ConfigPropsWithCallbacks, "iTwinId" | "clientId"> & {
     onClickCreate?: () => void;
-    // (undocumented)
     onClickTemplateTitle?: (template: Configuration) => void;
-}
+};
 
 // @beta
-export const Templates: ({ onClickCreate, onClickTemplateTitle }: TemplateProps) => JSX.Element;
+export const Templates: ({ onClickCreate, onClickTemplateTitle, onExportResult }: TemplateProps) => JSX.Element;
 
 
 export * from "@itwin/insights-client";

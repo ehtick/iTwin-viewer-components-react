@@ -3,7 +3,8 @@
  * See LICENSE.md in the project root for license terms and full copyright notice.
  *--------------------------------------------------------------------------------------------*/
 
-import { defineConfig, loadEnv } from "vite";
+import { readFileSync } from "fs";
+import { defineConfig, loadEnv, Plugin } from "vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import react from "@vitejs/plugin-react";
 
@@ -23,6 +24,8 @@ export default defineConfig(({ mode }) => {
     throw new Error("Please add a valid redirect URI to the .env file and restart. See the README for more information.");
   }
 
+  const reloadConfig = getReloadConfig(env.IMJS_ENABLE_HOT_RELOAD);
+
   return {
     plugins: [
       react(),
@@ -35,6 +38,7 @@ export default defineConfig(({ mode }) => {
           },
         ],
       }),
+      ...(reloadConfig ? [reloadInjectedPackages(reloadConfig)] : []),
     ],
     server: {
       port: 3000,
@@ -58,3 +62,54 @@ export default defineConfig(({ mode }) => {
     },
   };
 });
+
+function getReloadConfig(config?: string) {
+  if (!!config) {
+    return config === "polling" ? { usePolling: true } : {};
+  }
+  return undefined;
+}
+
+function reloadInjectedPackages(config: { usePolling?: boolean }): Plugin {
+  const { rootDependencies, injectedPackages } = getRootConfig();
+  const include = [...injectedPackages, "@itwin/itwinui-react"].flatMap((mod) => getModuleIncludes(mod));
+  return {
+    name: "watch-node-modules",
+    configureServer: (server) => {
+      server.watcher.options = {
+        ...server.watcher.options,
+        ...config,
+        ignored: ["**/build/**", "**/node_modules/.vite/**", ...injectedPackages.map((mod) => `!**/node_modules/${mod}/lib/esm/**`)],
+      };
+      (server.watcher as any)._userIgnored = undefined;
+    },
+    config: () => {
+      return {
+        optimizeDeps: {
+          force: true,
+          exclude: [...injectedPackages, "@itwin/itwinui-react"],
+          include: [...rootDependencies, ...include, ...forceInclude],
+        },
+      };
+    },
+  };
+}
+
+function getRootConfig() {
+  const packageJson = JSON.parse(readFileSync("./package.json", { encoding: "utf-8" }));
+  const injectedPackages = Object.keys(packageJson.dependenciesMeta);
+  const excluded = [...excludedDeps, ...injectedPackages, "@itwin/itwinui-react"];
+  return {
+    injectedPackages,
+    rootDependencies: Object.keys(packageJson.dependencies).filter((dep) => !excluded.includes(dep)),
+  };
+}
+
+function getModuleIncludes(module: string) {
+  const packageJson = JSON.parse(readFileSync(`./node_modules/${module}/package.json`, { encoding: "utf-8" }));
+  const deps = Object.keys(packageJson.dependencies);
+  return deps.filter((dep) => !excludedDeps.includes(dep)).map((dep) => `${module} > ${dep}`);
+}
+
+const excludedDeps = ["@bentley/icons-generic-webfont", "@bentley/icons-generic", "@itwin/imodels-access-common"];
+const forceInclude = ["react-dom/server"];
